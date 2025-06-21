@@ -16,6 +16,7 @@ import {
   RotateCcw,
   CreditCard,
   Bell,
+  Upload,
   ChevronDown,
   ChevronRight
 } from "lucide-react";
@@ -38,6 +39,7 @@ const navigation = [
   { name: "Returns & Adjustments", href: "/returns", icon: RotateCcw },
   { name: "Payment Management", href: "/payments", icon: CreditCard },
   { name: "Notifications", href: "/notifications", icon: Bell },
+  { name: "Bulk Upload", href: "/bulk-upload", icon: Upload },
   { name: "Reports", href: "/reports", icon: FileText },
 ];
 

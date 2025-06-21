@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, FileText, Truck, Eye } from "lucide-react";
+import { Plus, Search, FileText, Truck, Eye, Download } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,6 +41,7 @@ import { insertPurchaseOrderSchema, type PurchaseOrder, type Supplier } from "@s
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, generateOrderNumber } from "@/lib/utils";
+import { downloadPurchaseOrderPDF } from "@/lib/pdf-utils";
 import type { z } from "zod";
 import { MainLayout } from "@/components/layout/main-layout";
 
@@ -388,9 +389,19 @@ export default function PurchaseOrders() {
                           <TableCell>{getStatusBadge(order.status)}</TableCell>
                           <TableCell className="text-gray-300">{formatDate(order.createdAt)}</TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300">
-                              <Eye className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center space-x-2">
+                              <Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-green-400 hover:text-green-300"
+                                onClick={() => downloadPurchaseOrderPDF({ ...order, supplier, items: [] })}
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
