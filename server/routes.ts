@@ -1,12 +1,34 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import multer from "multer";
 import { storage } from "./storage";
+import { processBulkProducts, processBulkPurchaseOrders, processBulkInventory, generateTemplate } from "./bulk-upload";
 import {
   insertUserSchema, insertCategorySchema, insertSupplierSchema, insertCustomerSchema,
   insertProductSchema, insertInventoryTransactionSchema, insertPurchaseOrderSchema,
   insertSalesOrderSchema, insertPurchaseOrderItemSchema, insertSalesOrderItemSchema,
   insertWarehouseSchema, insertReturnSchema, insertPaymentSchema, insertNotificationSchema
 } from "@shared/schema";
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'text/csv',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+    if (allowedTypes.includes(file.mimetype) || file.originalname.endsWith('.csv') || file.originalname.endsWith('.xlsx')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only CSV and Excel files are allowed.'));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard routes
@@ -476,6 +498,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ updated: updates.length });
     } catch (error) {
       res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Bulk upload routes
+  app.post("/api/bulk-upload/:type", upload.single('file'), async (req, res) => {
+    try {
+      const { type } = req.params;
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Process the uploaded file based on type
+      let result;
+      switch (type) {
+        case 'products':
+          result = await processBulkProducts(file.buffer, file.mimetype);
+          break;
+        case 'purchase-orders':
+          result = await processBulkPurchaseOrders(file.buffer, file.mimetype);
+          break;
+        case 'inventory':
+          result = await processBulkInventory(file.buffer, file.mimetype);
+          break;
+        default:
+          return res.status(400).json({ message: "Invalid upload type" });
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: "Bulk upload failed", error: error.message });
+    }
+  });
+
+  app.get("/api/bulk-upload/template/:type", async (req, res) => {
+    try {
+      const { type } = req.params;
+      const template = generateTemplate(type);
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=${type}-template.csv`);
+      res.send(template);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate template" });
     }
   });
 

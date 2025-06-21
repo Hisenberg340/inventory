@@ -14,6 +14,7 @@ import SalesOrders from "@/pages/sales-orders";
 import Returns from "@/pages/returns";
 import Payments from "@/pages/payments";
 import Notifications from "@/pages/notifications";
+import BulkUpload from "@/pages/bulk-upload";
 import Reports from "@/pages/reports";
 import Users from "@/pages/users";
 import Settings from "@/pages/settings";
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/returns" component={Returns} />
       <Route path="/payments" component={Payments} />
       <Route path="/notifications" component={Notifications} />
+      <Route path="/bulk-upload" component={BulkUpload} />
       <Route path="/reports" component={Reports} />
       <Route path="/users" component={Users} />
       <Route path="/settings" component={Settings} />
