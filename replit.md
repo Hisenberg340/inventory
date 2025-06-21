@@ -112,6 +112,13 @@ The system provides RESTful endpoints for:
 
 ```
 Changelog:
+- June 21, 2025. Enhanced order management system with comprehensive forms:
+  - Updated purchase and sales order schemas with detailed financial fields
+  - Added support for line-item tax/discount calculations 
+  - Implemented enhanced order forms with dynamic product tables
+  - Added real-time financial totals calculation
+  - Integrated PDF export functionality for both order types
+  - Enhanced payment terms and delivery tracking fields
 - June 21, 2025. Migration to Replit environment completed
 - June 21, 2025. Starting comprehensive feature expansion:
   - Core Pages: Returns, Payments, Notifications, Settings

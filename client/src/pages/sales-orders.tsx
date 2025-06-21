@@ -37,11 +37,12 @@ import { Plus, Search, FileText, Users, Eye, DollarSign, Download } from "lucide
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSalesOrderSchema, type SalesOrder, type Customer } from "@shared/schema";
+import { insertSalesOrderSchema, type SalesOrder, type Customer, type Product } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, generateOrderNumber } from "@/lib/utils";
 import { downloadSalesOrderPDF } from "@/lib/pdf-utils";
+import { EnhancedSalesOrderForm } from "@/components/forms/enhanced-sales-order-form";
 import type { z } from "zod";
 import { MainLayout } from "@/components/layout/main-layout";
 
@@ -61,29 +62,17 @@ export default function SalesOrders() {
     queryKey: ["/api/customers"],
   });
 
-  const form = useForm<SalesOrderFormData>({
-    resolver: zodResolver(insertSalesOrderSchema),
-    defaultValues: {
-      orderNumber: generateOrderNumber('SO'),
-      customerId: 0,
-      totalAmount: "0.00",
-      status: "draft",
-    },
+  const { data: products = [] } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
   });
 
   const createSalesOrderMutation = useMutation({
-    mutationFn: async (data: SalesOrderFormData) => {
+    mutationFn: async (data: any) => {
       return apiRequest("POST", "/api/sales-orders", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
       setIsDialogOpen(false);
-      form.reset({
-        orderNumber: generateOrderNumber('SO'),
-        customerId: 0,
-        totalAmount: "0.00",
-        status: "draft",
-      });
       toast({
         title: "Success",
         description: "Sales order created successfully",
@@ -98,7 +87,7 @@ export default function SalesOrders() {
     },
   });
 
-  const onSubmit = (data: SalesOrderFormData) => {
+  const handleFormSubmit = (data: any) => {
     createSalesOrderMutation.mutate(data);
   };
 
@@ -145,118 +134,18 @@ export default function SalesOrders() {
                 New Sales Order
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-gray-800 border-gray-700 max-w-2xl">
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
               <DialogHeader>
-                <DialogTitle className="text-white">Create Sales Order</DialogTitle>
+                <DialogTitle className="text-white text-xl">Create Sales Order</DialogTitle>
               </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="orderNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-300">Order Number</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              className="bg-gray-700 border-gray-600 text-white"
-                              readOnly
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="customerId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-300">Customer</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                            <FormControl>
-                              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                                <SelectValue placeholder="Select customer" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="bg-gray-700 border-gray-600">
-                              {customers.map((customer: Customer) => (
-                                <SelectItem key={customer.id} value={customer.id.toString()}>
-                                  {customer.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="totalAmount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-300">Total Amount</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              type="number" 
-                              step="0.01"
-                              className="bg-gray-700 border-gray-600 text-white"
-                              placeholder="0.00"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="status"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-300">Status</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="bg-gray-700 border-gray-600">
-                              <SelectItem value="draft">Draft</SelectItem>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-2 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={createSalesOrderMutation.isPending}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      {createSalesOrderMutation.isPending ? "Creating..." : "Create Order"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
+              <div className="mt-4">
+                <EnhancedSalesOrderForm
+                  customers={customers}
+                  products={products}
+                  onSubmit={handleFormSubmit}
+                  isLoading={createSalesOrderMutation.isPending}
+                />
+              </div>
             </DialogContent>
           </Dialog>
         </div>

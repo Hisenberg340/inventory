@@ -98,16 +98,32 @@ export const inventoryTransactions = pgTable("inventory_transactions", {
 export const purchaseOrders = pgTable("purchase_orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
+  orderDate: date("order_date").notNull().defaultNow(),
   supplierId: integer("supplier_id").references(() => suppliers.id).notNull(),
   warehouseId: integer("warehouse_id").references(() => warehouses.id),
+  referenceNumber: text("reference_number"), // Vendor-provided reference/quotation no
+  deliveryDate: date("delivery_date"), // Expected delivery date
+  deliveryLocation: text("delivery_location"), // Where items are to be received
+  paymentTerms: text("payment_terms", { enum: ["advance", "net_15", "net_30", "due_on_receipt"] }).notNull().default("net_30"),
   status: text("status", { enum: ["draft", "pending", "approved", "fulfilled", "cancelled"] }).notNull().default("draft"),
+  // Financial totals
+  totalBeforeTax: decimal("total_before_tax", { precision: 10, scale: 2 }).notNull().default("0"),
+  totalTax: decimal("total_tax", { precision: 10, scale: 2 }).notNull().default("0"),
+  totalDiscount: decimal("total_discount", { precision: 10, scale: 2 }).notNull().default("0"),
+  grandTotal: decimal("grand_total", { precision: 10, scale: 2 }).notNull(),
+  amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).notNull().default("0"),
+  amountDue: decimal("amount_due", { precision: 10, scale: 2 }).notNull().default("0"),
+  // Legacy field for compatibility
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).notNull().default("0"),
   paymentStatus: text("payment_status", { enum: ["pending", "paid", "overdue", "cancelled"] }).notNull().default("pending"),
   paymentDueDate: date("payment_due_date"),
   paymentMethod: text("payment_method"),
   transactionId: text("transaction_id"),
+  remarks: text("remarks"), // General notes/comments
   notes: text("notes"),
+  attachment: text("attachment"), // File path/URL for attachments
+  approvedBy: integer("approved_by").references(() => users.id),
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -118,6 +134,11 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   purchaseOrderId: integer("purchase_order_id").references(() => purchaseOrders.id).notNull(),
   productId: integer("product_id").references(() => products.id).notNull(),
   quantity: integer("quantity").notNull(),
+  purchasePrice: decimal("purchase_price", { precision: 10, scale: 2 }).notNull(), // Price per unit
+  taxPercent: decimal("tax_percent", { precision: 5, scale: 2 }).notNull().default("0"), // GST/VAT %
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }).notNull().default("0"), // Optional per item discount
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(), // (Qty × Price) - Discount + Tax
+  // Legacy fields for compatibility
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
 });
@@ -125,18 +146,32 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
 export const salesOrders = pgTable("sales_orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
-  customerId: integer("customer_id").references(() => customers.id),
+  orderDate: date("order_date").notNull().defaultNow(),
+  customerId: integer("customer_id").references(() => customers.id).notNull(),
   warehouseId: integer("warehouse_id").references(() => warehouses.id),
-  status: text("status", { enum: ["draft", "pending", "approved", "fulfilled", "cancelled"] }).notNull().default("draft"),
+  status: text("status", { enum: ["draft", "confirmed", "shipped", "delivered", "cancelled"] }).notNull().default("draft"),
+  paymentStatus: text("payment_status", { enum: ["unpaid", "partially_paid", "paid"] }).notNull().default("unpaid"),
+  paymentTerms: text("payment_terms", { enum: ["advance", "net_15", "net_30", "due_on_receipt"] }).notNull().default("net_30"),
+  dueDate: date("due_date"), // Payment due date
+  // Financial totals
+  subtotalAmount: decimal("subtotal_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  totalTax: decimal("total_tax", { precision: 10, scale: 2 }).notNull().default("0"),
+  totalDiscount: decimal("total_discount", { precision: 10, scale: 2 }).notNull().default("0"),
+  grandTotal: decimal("grand_total", { precision: 10, scale: 2 }).notNull(),
+  amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).notNull().default("0"),
+  amountDue: decimal("amount_due", { precision: 10, scale: 2 }).notNull().default("0"),
+  // Legacy fields for compatibility
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).notNull().default("0"),
-  paymentStatus: text("payment_status", { enum: ["pending", "paid", "overdue", "cancelled"] }).notNull().default("pending"),
   paymentDueDate: date("payment_due_date"),
   paymentMethod: text("payment_method"),
   transactionId: text("transaction_id"),
   invoiceGenerated: boolean("invoice_generated").notNull().default(false),
   invoiceUrl: text("invoice_url"),
   notes: text("notes"),
+  remarks: text("remarks"), // Additional comments
+  attachment: text("attachment"), // File path/URL for attachments
+  approvedBy: integer("approved_by").references(() => users.id),
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -147,9 +182,14 @@ export const salesOrderItems = pgTable("sales_order_items", {
   salesOrderId: integer("sales_order_id").references(() => salesOrders.id).notNull(),
   productId: integer("product_id").references(() => products.id).notNull(),
   quantity: integer("quantity").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(), // Price per unit (rate)
+  taxPercent: decimal("tax_percent", { precision: 5, scale: 2 }).notNull().default("0"), // Tax %
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }).notNull().default("0"), // Optional per item discount
+  lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(), // (Qty × Price) - Discount + Tax
+  batchNumber: text("batch_number"), // For batch tracking
+  // Legacy fields for compatibility
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
-  batchNumber: text("batch_number"),
 });
 
 // Returns Management
