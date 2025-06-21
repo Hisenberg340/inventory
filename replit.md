@@ -112,6 +112,13 @@ The system provides RESTful endpoints for:
 
 ```
 Changelog:
+- June 21, 2025. Migration to Replit environment completed
+- June 21, 2025. Starting comprehensive feature expansion:
+  - Core Pages: Returns, Payments, Notifications, Settings
+  - Advanced inventory features with multi-location and batch tracking
+  - Enhanced order management with workflows and invoicing
+  - Reporting and analytics module
+  - UX improvements and mobile optimization
 - June 20, 2025. Initial setup
 ```
 

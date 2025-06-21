@@ -39,7 +39,7 @@ export function generateSKU(name: string): string {
   return `${prefix}-${timestamp}`;
 }
 
-export function generateOrderNumber(type: 'PO' | 'SO'): string {
+export function generateOrderNumber(type: 'PO' | 'SO' | 'RET' | 'PAY'): string {
   const year = new Date().getFullYear();
   const timestamp = Date.now().toString().slice(-6);
   return `${type}-${year}-${timestamp}`;

@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import {
   insertUserSchema, insertCategorySchema, insertSupplierSchema, insertCustomerSchema,
   insertProductSchema, insertInventoryTransactionSchema, insertPurchaseOrderSchema,
-  insertSalesOrderSchema, insertPurchaseOrderItemSchema, insertSalesOrderItemSchema
+  insertSalesOrderSchema, insertPurchaseOrderItemSchema, insertSalesOrderItemSchema,
+  insertWarehouseSchema, insertReturnSchema, insertPaymentSchema, insertNotificationSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -326,6 +327,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(items);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch sales order items" });
+    }
+  });
+
+  // Warehouse routes
+  app.get("/api/warehouses", async (req, res) => {
+    try {
+      const warehouses = await storage.getAllWarehouses();
+      res.json(warehouses);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch warehouses" });
+    }
+  });
+
+  app.post("/api/warehouses", async (req, res) => {
+    try {
+      const warehouseData = insertWarehouseSchema.parse(req.body);
+      const warehouse = await storage.createWarehouse(warehouseData);
+      res.json(warehouse);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid warehouse data" });
+    }
+  });
+
+  app.patch("/api/warehouses/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const warehouseData = insertWarehouseSchema.partial().parse(req.body);
+      const warehouse = await storage.updateWarehouse(id, warehouseData);
+      if (!warehouse) {
+        return res.status(404).json({ message: "Warehouse not found" });
+      }
+      res.json(warehouse);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid warehouse data" });
+    }
+  });
+
+  // Return routes
+  app.get("/api/returns", async (req, res) => {
+    try {
+      const returns = await storage.getAllReturns();
+      res.json(returns);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch returns" });
+    }
+  });
+
+  app.post("/api/returns", async (req, res) => {
+    try {
+      const returnData = insertReturnSchema.parse(req.body);
+      const returnRecord = await storage.createReturn(returnData);
+      res.json(returnRecord);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid return data" });
+    }
+  });
+
+  app.patch("/api/returns/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const returnData = insertReturnSchema.partial().parse(req.body);
+      const returnRecord = await storage.updateReturn(id, returnData);
+      if (!returnRecord) {
+        return res.status(404).json({ message: "Return not found" });
+      }
+      res.json(returnRecord);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid return data" });
+    }
+  });
+
+  // Payment routes
+  app.get("/api/payments", async (req, res) => {
+    try {
+      const payments = await storage.getAllPayments();
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch payments" });
+    }
+  });
+
+  app.post("/api/payments", async (req, res) => {
+    try {
+      const paymentData = insertPaymentSchema.parse(req.body);
+      const payment = await storage.createPayment(paymentData);
+      res.json(payment);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid payment data" });
+    }
+  });
+
+  app.patch("/api/payments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const paymentData = insertPaymentSchema.partial().parse(req.body);
+      const payment = await storage.updatePayment(id, paymentData);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      res.json(payment);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid payment data" });
+    }
+  });
+
+  // Notification routes
+  app.get("/api/notifications", async (req, res) => {
+    try {
+      const notifications = await storage.getAllNotifications();
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post("/api/notifications", async (req, res) => {
+    try {
+      const notificationData = insertNotificationSchema.parse(req.body);
+      const notification = await storage.createNotification(notificationData);
+      res.json(notification);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid notification data" });
+    }
+  });
+
+  app.post("/api/notifications/:id/read", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const notification = await storage.updateNotification(id, { isRead: true });
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      res.json(notification);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.post("/api/notifications/mark-all-read", async (req, res) => {
+    try {
+      const notifications = await storage.getAllNotifications();
+      const updates = await Promise.all(
+        notifications.filter(n => !n.isRead).map(n => 
+          storage.updateNotification(n.id, { isRead: true })
+        )
+      );
+      res.json({ updated: updates.length });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
     }
   });
 
