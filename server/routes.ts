@@ -304,11 +304,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/purchase-orders", async (req, res) => {
     try {
-      const orderData = insertPurchaseOrderSchema.parse(req.body);
+      console.log("Received purchase order data:", req.body);
+      
+      // Extract and transform the enhanced form data
+      const { items = [], ...orderFields } = req.body;
+      
+      // Create base order data that matches the schema
+      const baseOrderData = {
+        orderNumber: orderFields.orderNumber,
+        orderDate: orderFields.orderDate || new Date().toISOString().split('T')[0],
+        supplierId: orderFields.supplierId,
+        referenceNumber: orderFields.referenceNumber || null,
+        deliveryDate: orderFields.deliveryDate || null,
+        deliveryLocation: orderFields.deliveryLocation || null,
+        paymentTerms: orderFields.paymentTerms || "net_30",
+        status: orderFields.status || "draft",
+        remarks: orderFields.remarks || null,
+        totalAmount: orderFields.totalAmount || orderFields.grandTotal || "0.00",
+        taxAmount: orderFields.totalTax?.toString() || "0.00",
+        discountAmount: orderFields.totalDiscount?.toString() || "0.00",
+        subtotalAmount: orderFields.totalBeforeTax?.toString() || "0.00",
+        warehouseId: null,
+        paymentStatus: "pending"
+      };
+      
+      console.log("Transformed order data:", baseOrderData);
+      
+      const orderData = insertPurchaseOrderSchema.parse(baseOrderData);
       const order = await storage.createPurchaseOrder(orderData);
+      
+      // Create order items if provided
+      if (items && items.length > 0) {
+        for (const item of items) {
+          const itemData = {
+            purchaseOrderId: order.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            purchasePrice: item.purchasePrice?.toString() || "0.00",
+            taxPercent: item.taxPercent?.toString() || "0.00",
+            discountPercent: item.discountPercent?.toString() || "0.00",
+            unitPrice: item.purchasePrice?.toString() || "0.00",
+            totalPrice: ((item.quantity || 0) * (item.purchasePrice || 0)).toString(),
+            subtotal: ((item.quantity || 0) * (item.purchasePrice || 0)).toString()
+          };
+          await storage.createPurchaseOrderItem(itemData);
+        }
+      }
+      
       res.json(order);
     } catch (error) {
-      res.status(400).json({ message: "Invalid purchase order data" });
+      console.error("Purchase order creation error:", error);
+      res.status(400).json({ message: "Invalid purchase order data", error: error.message });
     }
   });
 
@@ -334,11 +380,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/sales-orders", async (req, res) => {
     try {
-      const orderData = insertSalesOrderSchema.parse(req.body);
+      console.log("Received sales order data:", req.body);
+      
+      // Extract and transform the enhanced form data
+      const { items = [], ...orderFields } = req.body;
+      
+      // Create base order data that matches the schema
+      const baseOrderData = {
+        orderNumber: orderFields.orderNumber,
+        orderDate: orderFields.orderDate || new Date().toISOString().split('T')[0],
+        customerId: orderFields.customerId,
+        status: orderFields.status || "draft",
+        paymentStatus: orderFields.paymentStatus || "unpaid",
+        paymentTerms: orderFields.paymentTerms || "net_30",
+        dueDate: orderFields.dueDate || null,
+        remarks: orderFields.remarks || null,
+        totalAmount: orderFields.totalAmount || orderFields.grandTotal || "0.00",
+        taxAmount: orderFields.totalTax?.toString() || "0.00",
+        discountAmount: orderFields.totalDiscount?.toString() || "0.00",
+        subtotalAmount: orderFields.subtotalAmount?.toString() || "0.00"
+      };
+      
+      console.log("Transformed sales order data:", baseOrderData);
+      
+      const orderData = insertSalesOrderSchema.parse(baseOrderData);
       const order = await storage.createSalesOrder(orderData);
+      
+      // Create order items if provided
+      if (items && items.length > 0) {
+        for (const item of items) {
+          const itemData = {
+            salesOrderId: order.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price?.toString() || "0.00",
+            taxPercent: item.taxPercent?.toString() || "0.00",
+            discountPercent: item.discountPercent?.toString() || "0.00",
+            batchNumber: item.batchNumber || null,
+            unitPrice: item.price?.toString() || "0.00",
+            totalPrice: ((item.quantity || 0) * (item.price || 0)).toString(),
+            lineTotal: ((item.quantity || 0) * (item.price || 0)).toString()
+          };
+          await storage.createSalesOrderItem(itemData);
+        }
+      }
+      
       res.json(order);
     } catch (error) {
-      res.status(400).json({ message: "Invalid sales order data" });
+      console.error("Sales order creation error:", error);
+      res.status(400).json({ message: "Invalid sales order data", error: error.message });
     }
   });
 

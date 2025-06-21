@@ -367,14 +367,24 @@ export function EnhancedPurchaseOrderForm({
                             control={form.control}
                             name={`items.${index}.productId`}
                             render={({ field }) => (
-                              <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                              <Select 
+                                onValueChange={(value) => {
+                                  field.onChange(parseInt(value));
+                                  // Auto-populate price when product is selected
+                                  const selectedProduct = products.find(p => p.id === parseInt(value));
+                                  if (selectedProduct) {
+                                    form.setValue(`items.${index}.purchasePrice`, parseFloat(selectedProduct.purchasePrice));
+                                  }
+                                }} 
+                                value={field.value?.toString()}
+                              >
                                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white min-w-40">
                                   <SelectValue placeholder="Select product" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-gray-700 border-gray-600">
                                   {products.map((product) => (
                                     <SelectItem key={product.id} value={product.id.toString()}>
-                                      {product.name}
+                                      {product.name} - {product.sku}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
